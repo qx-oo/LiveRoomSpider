@@ -78,16 +78,18 @@ class LiveRoomSpider():
             return
         data = json.loads(response)
         if data.get('data'):
+            self.result['active'] = False
             if data['data'].get('hostinfo'):
                 self.result['liveer_name'] = data['data']['hostinfo'].get('name', '')
             if data['data'].get('roominfo'):
-                self.result['active'] = True if data['data']['roominfo'].get('status') == '2' else False
                 self.result['liveroom_name'] = data['data']['roominfo'].get('name', '')
                 self.result['live_thumbnail'] = data['data']['roominfo'].get('pictures', {}).get('img', '')
                 try:
                     self.result['audience_count'] = int(data['data']['roominfo'].get('person_num'))
                 except ValueError:
                     self.result['audience_count'] = 0
+            if data['data'].get('videoinfo', {}).get('address', ''):
+                self.result['active'] = True
 
     async def douyu_func_spider(self):
         '''
