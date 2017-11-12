@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+
+# version: 1.0
+# author: shawn
+
 from lxml import etree
 import re
 import aiohttp
