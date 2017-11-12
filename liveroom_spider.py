@@ -30,6 +30,7 @@ class LiveRoomSpider():
             '.*\.douyu\.com.*': self.douyu_func_spider,
             '.*\.panda\.tv.*': self.panda_func_spider,
             '.*\.zhanqi\.tv.*': self.zhanqi_func_spider,
+            '.*\.bilibili.com.*': self.bilibili_func_spider,
         }
         self.url = url
         self.result = {}
@@ -46,6 +47,32 @@ class LiveRoomSpider():
                 if not value and key != 'active':
                     return {}
         return self.result
+
+    async def bilibili_func_spider(self):
+        '''
+        哔哩哔哩直播解析
+        '''
+        self.result['live_platform'] = "哔哩哔哩"
+        try:
+            room_id = re.findall('\.bilibili.com/.*?(\d*)$', self.url)
+            if not room_id:
+                return
+            response = await self.get_response("https://api.live.bilibili.com/AppRoom/index?platform=ios&room_id=%s" % room_id[0])
+        except Exception as e:
+            return
+        data = json.loads(response)
+        if data.get('data'):
+            self.result['live_thumbnail'] = data['data'].get('cover', '')
+            self.result['liveroom_name'] = data['data'].get('title', '')
+            self.result['liveer_name'] = data['data'].get('uname', '')
+            self.result['liveer_avatar'] = data['data'].get('face', '')
+
+            # PREPARING 是闲置的, ROUND是轮播, LIVE是直播
+            self.result['active'] = (data['data'].get('status', 'PREPARING') == "LIVE")
+            try:
+                self.result['audience_count'] = int(data['data'].get('online', 0))
+            except ValueError:
+                self.result['audience_count'] = 0
 
     async def zhanqi_func_spider(self):
         '''
@@ -157,4 +184,3 @@ class LiveRoomSpider():
                 if isinstance(response, bytes):
                     response = response.decode('utf8')
         return response
-
