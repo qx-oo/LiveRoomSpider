@@ -18,6 +18,7 @@ class LiveRoomSpider():
             'liveer_name': '',
             'live_thumbnail': '',
             'audience_count': 0,
+            'liveer_avatar': '',
         }
         '''
         self.site_func = {
@@ -59,6 +60,7 @@ class LiveRoomSpider():
             self.result['active'] = True
             self.result['liveroom_name'] = data['data'].get('title', '')
             self.result['liveer_name'] = data['data'].get('nickname', '')
+            self.result['liveer_avatar'] = data['data'].get('avatar', '')
             try:
                 self.result['audience_count'] = int(data['data'].get('online', 0))
             except ValueError:
@@ -78,16 +80,19 @@ class LiveRoomSpider():
             return
         data = json.loads(response)
         if data.get('data'):
+            self.result['active'] = False
             if data['data'].get('hostinfo'):
                 self.result['liveer_name'] = data['data']['hostinfo'].get('name', '')
+                self.result['liveer_avatar'] = data['data']['hostinfo'].get('avatar', '')
             if data['data'].get('roominfo'):
-                self.result['active'] = True if data['data']['roominfo'].get('status') == '2' else False
                 self.result['liveroom_name'] = data['data']['roominfo'].get('name', '')
                 self.result['live_thumbnail'] = data['data']['roominfo'].get('pictures', {}).get('img', '')
                 try:
                     self.result['audience_count'] = int(data['data']['roominfo'].get('person_num'))
                 except ValueError:
                     self.result['audience_count'] = 0
+            if data['data'].get('videoinfo', {}).get('address', ''):
+                self.result['active'] = True
 
     async def douyu_func_spider(self):
         '''
@@ -99,21 +104,21 @@ class LiveRoomSpider():
             response = await self.get_response(url)
         except Exception as e:
             return
-        active_str = re.findall(r'isLive\s*:\s*(\d)\s*,', response.decode('utf-8'))
+        active_str = re.findall(r'isLive\s*:\s*(\d)\s*,', response)
         if active_str:
             self.result['active'] = True if active_str[0] == '1' else False
         if not self.result['active']:
             return
-        room_id = re.findall(r'room_id\s*:\s*(\d*)\s*,', response.decode('utf-8'))
+        room_id = re.findall(r'room_id\s*:\s*(\d*)\s*,', response)
         if room_id:
             room_id = room_id[0]
         else:
             return
         # parse liveroom_name and live_thumbnail
-        liveroom_name_str = re.findall(r'roomName\s*:\s*"(.*)"\s*,', response.decode('utf-8'))
+        liveroom_name_str = re.findall(r'roomName\s*:\s*"(.*)"\s*,', response)
         if liveroom_name_str:
             self.result['liveroom_name'] = liveroom_name_str[0]
-        live_thumbnail_str = re.findall(r'roomSrc\s*:\s*"(.*)"\s*,', response.decode('utf-8'))
+        live_thumbnail_str = re.findall(r'roomSrc\s*:\s*"(.*)"\s*,', response)
         if live_thumbnail_str:
             self.result['live_thumbnail'] = live_thumbnail_str[0]
 
@@ -125,7 +130,8 @@ class LiveRoomSpider():
         data = json.loads(response)
         if data.get('data'):
             if data['data'].get('roomInfo'):
-                self.result['liveer_name'] = data['data']['roomInfo'].get('nickname')
+                self.result['liveer_name'] = data['data']['roomInfo'].get('nickname', '')
+                self.result['liveer_avatar'] = data['data']['roomInfo'].get('avatar', '')
                 audience_str = data['data']['roomInfo'].get('online')
                 try:
                     self.result['audience_count'] = int(float(audience_str))
@@ -143,5 +149,7 @@ class LiveRoomSpider():
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 response = await response.read()
+                if isinstance(response, bytes):
+                    response = response.decode('utf8')
         return response
 
